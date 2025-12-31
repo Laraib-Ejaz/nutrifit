@@ -16,7 +16,7 @@ public class splashscreen extends AppCompatActivity {
             @Override
             public void run() {
                 // LoginActivity tab tak error dega jab tak aap file bana nahi leti
-                Intent intent = new Intent(splashscreen.this, LoginActivity.class);
+                Intent intent = new Intent(splashscreen.this, Loginpage.class);
                 startActivity(intent);
                 finish();
             }
