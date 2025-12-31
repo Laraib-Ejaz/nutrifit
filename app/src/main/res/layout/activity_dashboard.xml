@@ -20,7 +20,16 @@
             android:textStyle="bold"
             android:textColor="#2E7D32"
             android:layout_marginBottom="20dp"/>
-
+        <ImageView
+            android:id="@+id/profile_icon"
+            android:layout_width="45dp"
+            android:layout_height="45dp"
+            android:layout_alignParentEnd="true"
+            android:layout_marginTop="16dp"
+            android:layout_marginEnd="16dp"
+            android:padding="5dp"
+            android:src="@drawable/user"
+            android:contentDescription="User Profile" />
         <GridLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
