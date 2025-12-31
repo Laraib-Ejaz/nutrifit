@@ -63,6 +63,27 @@
             android:layout_marginTop="30dp"
             android:textStyle="bold"
             android:textColor="#000000"/>
+        <RadioGroup
+            android:id="@+id/genderGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginBottom="20dp"
+            android:gravity="center">
+
+            <RadioButton
+                android:id="@+id/radioMale"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Male"
+                android:layout_marginRight="20dp"/>
+
+            <RadioButton
+                android:id="@+id/radioFemale"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Female"/>
+        </RadioGroup>
 
 
 
