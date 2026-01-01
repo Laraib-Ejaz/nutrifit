@@ -35,7 +35,7 @@ public class DietPlansActivity extends AppCompatActivity {
         statusTitle.setText("Diet Plan for " + status + " BMI");
 
         // Model name check: "gemini-1.5-flash-latest" ya "gemini-pro" use karein
-        GenerativeModel gm = new GenerativeModel("gemini-flash-latest", "AIzaSyD3rmG6_TcdGAC00gRzJhkik-SN735DjPA");
+        GenerativeModel gm = new GenerativeModel("gemini-flash-latest", "yourapikey");
         model = GenerativeModelFutures.from(gm);
 
         generateAIDietPlan(bmi, status);
