@@ -1,6 +1,7 @@
 package com.example.nutrifit;
 
 import android.content.Intent;
+import android.content.SharedPreferences; // Import SharedPreferences
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -20,11 +21,10 @@ public class bmicalculation extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_bmicalcultion);
 
-        // Views ko initialize karna (Ab crash nahi hoga)
         editAge = findViewById(R.id.editAge);
         editWeight = findViewById(R.id.editWeight);
         editHeight = findViewById(R.id.editHeight);
-        genderGroup = findViewById(R.id.genderGroup); // FIX: Pehle ye missing tha
+        genderGroup = findViewById(R.id.genderGroup);
         btnCalculate = findViewById(R.id.btnCalculate);
 
         btnCalculate.setOnClickListener(new View.OnClickListener() {
@@ -40,28 +40,32 @@ public class bmicalculation extends AppCompatActivity {
         String weightStr = editWeight.getText().toString().trim();
         String heightStr = editHeight.getText().toString().trim();
 
-        // 1. Validation: Check empty fields aur RadioGroup selection
         if (ageStr.isEmpty() || weightStr.isEmpty() || heightStr.isEmpty() || genderGroup.getCheckedRadioButtonId() == -1) {
             Toast.makeText(this, "Please fill all details and select gender", Toast.LENGTH_SHORT).show();
             return;
         }
 
         try {
-            // 2. Calculation Logic
             float weight = Float.parseFloat(weightStr);
             float heightCm = Float.parseFloat(heightStr);
             float heightM = heightCm / 100;
             float bmiValue = weight / (heightM * heightM);
 
-            // 3. Status aur Diet Plan determine karna
             String status = getBmiStatus(bmiValue);
-            String dietPlan = getRecommendedDiet(status);
+            String bmiFormatted = String.format("%.1f", bmiValue);
 
-            // 4. Navigation to Dashboard with Data
+            // --- NAYA CODE: SHARED PREFERENCES MEIN SAVE KARNA ---
+            // Is se data phone ki memory mein save ho jayega aur login ke baad naya hi load hoga
+            SharedPreferences sharedPref = getSharedPreferences("UserHealthData", MODE_PRIVATE);
+            SharedPreferences.Editor editor = sharedPref.edit();
+            editor.putString("LAST_BMI", bmiFormatted);
+            editor.putString("LAST_STATUS", status);
+            editor.apply();
+            // ---------------------------------------------------
+
             Intent intent = new Intent(bmicalculation.this, dashboard.class);
-            intent.putExtra("BMI_SCORE", String.format("%.1f", bmiValue));
+            intent.putExtra("BMI_SCORE", bmiFormatted);
             intent.putExtra("STATUS", status);
-            intent.putExtra("DIET", dietPlan);
 
             startActivity(intent);
             finish();
@@ -76,14 +80,5 @@ public class bmicalculation extends AppCompatActivity {
         else if (bmi < 25) return "Healthy Weight";
         else if (bmi < 30) return "Overweight";
         else return "Obese";
-    }
-
-    private String getRecommendedDiet(String status) {
-        switch (status) {
-            case "Underweight": return "Focus on calorie-dense foods and proteins.";
-            case "Healthy Weight": return "Maintain a balanced diet with veggies and protein.";
-            case "Overweight": return "Low carb, high fiber diet. Control portions.";
-            default: return "Strict calorie deficit and increase fiber intake.";
-        }
     }
 }
