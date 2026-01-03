@@ -34,7 +34,7 @@ public class ChatBotActivity extends AppCompatActivity {
         setContentView(R.layout.activity_chat_bot);
 
         // API Setup - Model initialize
-        GenerativeModel gm = new GenerativeModel("gemini-flash-latest", "AIzaSyBCKujOwgBK1bovPeknXZnEllkIPtYqrdU");
+        GenerativeModel gm = new GenerativeModel("gemini-flash-latest", "AIzaSyCMrwIovDyByPo8DH-ocvC3TllympvO5Ik");
         model = GenerativeModelFutures.from(gm);
 
         recyclerView = findViewById(R.id.recyclerView);
