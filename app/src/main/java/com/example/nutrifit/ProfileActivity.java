@@ -1,5 +1,7 @@
 package com.example.nutrifit;
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.app.TimePickerDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -11,6 +13,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SwitchCompat;
 import com.google.firebase.auth.FirebaseAuth;
 import java.util.Calendar;
+import java.util.Locale;
 
 public class ProfileActivity extends AppCompatActivity {
 
@@ -24,99 +27,123 @@ public class ProfileActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_profile);
 
-        // 1. Initialization
+        // 1. Initialization (Using "UserSession" to match your other activities)
         hydrationSwitch = findViewById(R.id.hydrationSwitch);
         btnSetWorkoutTime = findViewById(R.id.btnSetWorkoutTime);
         btnLogout = findViewById(R.id.btnLogout);
         txtWorkoutTime = findViewById(R.id.txtWorkoutTime);
         userEmailText = findViewById(R.id.userEmailText);
 
-        // Do alag SharedPreferences (Settings aur Health Data ke liye)
-        sharedPreferences = getSharedPreferences("NutriFitPrefs", MODE_PRIVATE);
+        // Hum "UserSession" file use kar rahe hain taake flags sahi load hon
+        sharedPreferences = getSharedPreferences("UserSession", MODE_PRIVATE);
 
-        // 2. Show Current User Email
+        // 2. User Info (Firebase se current user ki email lena)
         if (FirebaseAuth.getInstance().getCurrentUser() != null) {
-            String email = FirebaseAuth.getInstance().getCurrentUser().getEmail();
-            userEmailText.setText("Email: " + email);
+            userEmailText.setText("Email: " + FirebaseAuth.getInstance().getCurrentUser().getEmail());
         }
 
-        // 3. Load saved Hydration state
-        boolean isHydrationOn = sharedPreferences.getBoolean("hydration_on", false);
-        hydrationSwitch.setChecked(isHydrationOn);
+        // 3. Load Saved States
+        hydrationSwitch.setChecked(sharedPreferences.getBoolean("hydration_on", false));
+        txtWorkoutTime.setText("Workout Time: " + sharedPreferences.getString("workout_time", "--:--"));
 
-        // Saved Workout Time load karein agar pehle se set hai
-        String savedTime = sharedPreferences.getString("workout_time", "--:--");
-        txtWorkoutTime.setText("Workout Time: " + savedTime);
-
-        // 4. Hydration Switch Listener
+        // 4. Hydration Switch Logic
         hydrationSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
             sharedPreferences.edit().putBoolean("hydration_on", isChecked).apply();
-            String msg = isChecked ? "Hydration Reminders Enabled" : "Hydration Reminders Disabled";
-            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+            if (isChecked) {
+                startHydrationReminders();
+                Toast.makeText(this, "Reminders Every 2 Hours", Toast.LENGTH_SHORT).show();
+            } else {
+                stopHydrationReminders();
+                Toast.makeText(this, "Reminders Disabled", Toast.LENGTH_SHORT).show();
+            }
         });
 
-        // 5. Workout Time Picker
+        // 5. Workout Time Picker Logic
         btnSetWorkoutTime.setOnClickListener(v -> {
             Calendar mcurrentTime = Calendar.getInstance();
             int hour = mcurrentTime.get(Calendar.HOUR_OF_DAY);
             int minute = mcurrentTime.get(Calendar.MINUTE);
 
             TimePickerDialog mTimePicker = new TimePickerDialog(ProfileActivity.this, (view, hourOfDay, selectedMinute) -> {
-                String time = String.format("%02d:%02d", hourOfDay, selectedMinute);
+                String time = String.format(Locale.getDefault(), "%02d:%02d", hourOfDay, selectedMinute);
                 txtWorkoutTime.setText("Workout Time: " + time);
-
-                // Save this time
                 sharedPreferences.edit().putString("workout_time", time).apply();
-
-                // Call the alarm method
-                setAlarm(hourOfDay, selectedMinute);
-
-                Toast.makeText(this, "Workout reminder set for " + time, Toast.LENGTH_LONG).show();
-
-            }, hour, minute, true); // 24 hour time
-            mTimePicker.setTitle("Select Workout Time");
+                setWorkoutAlarm(hourOfDay, selectedMinute);
+            }, hour, minute, true);
             mTimePicker.show();
         });
 
-        // 6. Logout Logic (With Data Clearing)
+        // 6. LOGOUT LOGIC (Updated for your requirements)
         btnLogout.setOnClickListener(v -> {
-            // A. Firebase Sign Out
+            // A. Firebase se Sign Out
             FirebaseAuth.getInstance().signOut();
 
-            // B. Clear All SharedPreferences (BMI, Status, Settings sab khatam)
-            // Taake naya user login kare toh usay purana data na dikhe
-            getSharedPreferences("UserHealthData", MODE_PRIVATE).edit().clear().apply();
-            getSharedPreferences("NutriFitPrefs", MODE_PRIVATE).edit().clear().apply();
+            // B. SharedPreferences Flags Update
+            SharedPreferences.Editor editor = sharedPreferences.edit();
+            editor.putBoolean("isLoggedIn", false);    // Splash ab login par bhejega
+            editor.putBoolean("hasCompletedBMI", false); // Login ke baad BMI page maangega
+            // Note: Hum 'userEmail' clear nahi kar rahe taake login ke baad history mil sake
+            editor.apply();
 
-            // C. Navigate to Login Page
+            // C. Background Reminders stop karna
+            stopHydrationReminders();
+
+            Toast.makeText(ProfileActivity.this, "Logged Out Successfully", Toast.LENGTH_SHORT).show();
+
+            // D. Activity Stack clear karke Login page par bhejna
             Intent intent = new Intent(ProfileActivity.this, Loginpage.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
             startActivity(intent);
             finish();
-
-            Toast.makeText(this, "Logged out successfully", Toast.LENGTH_SHORT).show();
         });
     }
 
-    private void setAlarm(int hour, int minute) {
-        Intent intent = new Intent(ProfileActivity.this, NotificationReceiverActivi.class);
-        android.app.PendingIntent pendingIntent = android.app.PendingIntent.getBroadcast(
-                this, 0, intent, android.app.PendingIntent.FLAG_IMMUTABLE | android.app.PendingIntent.FLAG_UPDATE_CURRENT);
+    // --- Hydration & Alarm Methods ---
 
-        android.app.AlarmManager alarmManager = (android.app.AlarmManager) getSystemService(ALARM_SERVICE);
+    private void startHydrationReminders() {
+        // Yahan humne class ka naam HydrationReceiver kar diya hai
+        Intent intent = new Intent(this, HydrationReceiver.class);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 1, intent,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
 
-        java.util.Calendar calendar = java.util.Calendar.getInstance();
-        calendar.set(java.util.Calendar.HOUR_OF_DAY, hour);
-        calendar.set(java.util.Calendar.MINUTE, minute);
-        calendar.set(java.util.Calendar.SECOND, 0);
+        AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
 
-        if (calendar.before(java.util.Calendar.getInstance())) {
-            calendar.add(java.util.Calendar.DATE, 1);
-        }
+        // 2 minute = 2 * 60 * 1000 milliseconds
+        long interval = 2 * 60 * 1000;
+        long triggerTime = System.currentTimeMillis() + interval;
 
         if (alarmManager != null) {
-            alarmManager.setExactAndAllowWhileIdle(android.app.AlarmManager.RTC_WAKEUP,
-                    calendar.getTimeInMillis(), pendingIntent);
+            alarmManager.setInexactRepeating(AlarmManager.RTC_WAKEUP, triggerTime, interval, pendingIntent);
+        }
+    }
+
+    private void stopHydrationReminders() {
+        Intent intent = new Intent(this, HydrationReceiver.class);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 1, intent,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+
+        AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
+        if (alarmManager != null) {
+            alarmManager.cancel(pendingIntent);
+        }
+    }
+
+    private void setWorkoutAlarm(int hour, int minute) {
+        Intent intent = new Intent(this, NotificationReceiverActivi.class);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(this, 0, intent,
+                PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
+        AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
+
+        Calendar calendar = Calendar.getInstance();
+        calendar.set(Calendar.HOUR_OF_DAY, hour);
+        calendar.set(Calendar.MINUTE, minute);
+        calendar.set(Calendar.SECOND, 0);
+
+        // Agar time guzar gaya ho toh kal ke liye set karein
+        if (calendar.before(Calendar.getInstance())) calendar.add(Calendar.DATE, 1);
+
+        if (alarmManager != null) {
+            alarmManager.setRepeating(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), AlarmManager.INTERVAL_DAY, pendingIntent);
         }
     }
 }

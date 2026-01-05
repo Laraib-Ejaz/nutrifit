@@ -1,9 +1,9 @@
 package com.example.nutrifit;
 
+import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Vibrator;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -52,22 +52,23 @@ public class WorkoutPlansActivity extends AppCompatActivity {
         adapter = new WorkoutAdapter(workoutList);
         recyclerView.setAdapter(adapter);
 
-        // Get Data from Intent
         String bmi = getIntent().getStringExtra("BMI_SCORE");
         String status = getIntent().getStringExtra("STATUS");
-        titleMain.setText("Workout for " + (status != null ? status : "Health"));
 
-        // Setup Gemini AI
-        GenerativeModel gm = new GenerativeModel("gemini-flash-latest", "your api key");
+        if (titleMain != null) {
+            titleMain.setText("Workout for " + (status != null ? status : "Health"));
+        }
+
+        GenerativeModel gm = new GenerativeModel("gemini-flash-latest", "AIzaSyCmrJ2wQAQcjjpTiA-mqgQCOMng3ff13bI");
         model = GenerativeModelFutures.from(gm);
 
         generateDynamicWorkout(bmi, status);
     }
 
     private void generateDynamicWorkout(String bmi, String status) {
-        String prompt = "Act as a fitness trainer. Give a workout for BMI " + bmi + " (" + status + "). " +
-                "Choose from: Squats, Deadlifts, Presses, Rows, Walking, Swimming, Cycling, Lunges, Jumping Jacks, Yoga, Running. " +
-                "Format as JSON: {\"list\": [{\"name\": \"Yoga\", \"desc\": \"15 mins\"}]}";
+        String prompt = "Act as a fitness trainer. Suggest 5 exercises for BMI " + bmi + " (" + status + "). " +
+                "Choose from: squats, deadlift, walking, running, yoga_, jumping_jack, swimming, water_arobics, pushup, bentoverrow, bench_press, cycling, plank, lunges, chair_leg_raise, wallpushup, seated_row, shoulderpresses. " +
+                "Respond ONLY with JSON: {\"list\": [{\"name\": \"Exercise Name\", \"desc\": \"3 sets of 15 reps\"}]}";
 
         Content content = new Content.Builder().addText(prompt).build();
         ListenableFuture<GenerateContentResponse> response = model.generateContent(content);
@@ -77,7 +78,10 @@ public class WorkoutPlansActivity extends AppCompatActivity {
             public void onSuccess(GenerateContentResponse result) {
                 runOnUiThread(() -> {
                     try {
-                        String jsonStr = result.getText().replaceAll("```json|```", "").trim();
+                        String jsonStr = result.getText();
+                        if (jsonStr.contains("{")) {
+                            jsonStr = jsonStr.substring(jsonStr.indexOf("{"), jsonStr.lastIndexOf("}") + 1);
+                        }
                         JSONObject jsonObject = new JSONObject(jsonStr);
                         JSONArray array = jsonObject.getJSONArray("list");
 
@@ -86,11 +90,12 @@ public class WorkoutPlansActivity extends AppCompatActivity {
                             JSONObject obj = array.getJSONObject(i);
                             workoutList.add(new WorkoutModel(obj.getString("name"), obj.getString("desc")));
                         }
-
                         lottieLoading.setVisibility(View.GONE);
                         recyclerView.setVisibility(View.VISIBLE);
                         adapter.notifyDataSetChanged();
-                    } catch (Exception e) { showFallback(); }
+                    } catch (Exception e) {
+                        showFallback();
+                    }
                 });
             }
             @Override
@@ -99,14 +104,14 @@ public class WorkoutPlansActivity extends AppCompatActivity {
     }
 
     private void showFallback() {
-        workoutList.add(new WorkoutModel("Walking", "20 mins"));
+        workoutList.clear();
+        workoutList.add(new WorkoutModel("Walking", "15 mins walk"));
         lottieLoading.setVisibility(View.GONE);
         recyclerView.setVisibility(View.VISIBLE);
         adapter.notifyDataSetChanged();
     }
 
-    // --- Adapter & Logic ---
-    class WorkoutModel {
+    static class WorkoutModel {
         String name, desc;
         WorkoutModel(String name, String desc) { this.name = name; this.desc = desc; }
     }
@@ -124,46 +129,54 @@ public class WorkoutPlansActivity extends AppCompatActivity {
         @Override
         public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
             WorkoutModel item = list.get(position);
-            holder.name.setText(item.name);
+            holder.name.setText(item.name.toUpperCase());
             holder.desc.setText(item.desc);
 
-            // GIF Load from local drawables
-            int resId = getExerciseDrawable(item.name);
-            Glide.with(WorkoutPlansActivity.this).asGif().load(resId).into(holder.gif);
+            String fileName = item.name.toLowerCase().trim().replace(" ", "_");
+            int resId = getResources().getIdentifier(fileName, "drawable", getPackageName());
+            if (resId != 0) {
+                Glide.with(WorkoutPlansActivity.this).asGif().load(resId).into(holder.gif);
+            }
 
-            // Timer Logic
             holder.tvTimer.setOnClickListener(v -> {
-                new CountDownTimer(30000, 1000) {
+                new CountDownTimer(20000, 1000) {
                     public void onTick(long ms) {
                         holder.tvTimer.setText(ms / 1000 + "s");
-                        holder.tvTimer.setTextColor(android.graphics.Color.RED);
                     }
                     public void onFinish() {
                         holder.tvTimer.setText("DONE!");
-                        holder.tvTimer.setTextColor(android.graphics.Color.GREEN);
-                        // Vibrate mobile
                         Vibrator vib = (Vibrator) getSystemService(VIBRATOR_SERVICE);
                         if (vib != null) vib.vibrate(500);
+                        try {
+                            MediaPlayer mp = MediaPlayer.create(WorkoutPlansActivity.this, R.raw.beep);
+                            mp.start();
+                        } catch (Exception e) { }
                     }
                 }.start();
             });
         }
-
         private int getExerciseDrawable(String name) {
             String n = name.toLowerCase();
-            if (n.contains("squat")) return R.drawable.squats;
+            if (n.contains("squats")) return R.drawable.squats;
             if (n.contains("deadlift")) return R.drawable.deadlift;
             if (n.contains("walking")) return R.drawable.walking;
             if (n.contains("running")) return R.drawable.running;
-            if (n.contains("yoga")) return R.drawable.yoga_;
-            if (n.contains("jack")) return R.drawable.jumping_jack;
+            if (n.contains("yoga")) return R.drawable.yoga;
+            if (n.contains("jumping_jack")) return R.drawable.jumping_jack;
             if (n.contains("swimming")) return R.drawable.swimming;
-            if (n.contains("water arobics")) return R.drawable.water_arobics;
+            if (n.contains("pushup"))  return R.drawable.pushup;
+            if (n.contains("bentoverrow")) return R.drawable.bentoverrow;
+            if (n.contains("bench_press")) return R.drawable.bench_press;
+            if (n.contains("cycling")) return R.drawable.cycling;
+            if (n.contains("plank")) return R.drawable.plank;
+            if (n.contains("lunges")) return R.drawable.lunges;
+            if (n.contains("chair_leg_raise")) return R.drawable.chair_leg_raise;
             if (n.contains("wallpushup")) return R.drawable.wallpushup;
-            if (n.contains("row")) return R.drawable.row;
-            if (n.contains("press")) return R.drawable.press;
-            // Add more as per your download list
-            return R.drawable.walking; // default
+            if (n.contains("seated_row")) return R.drawable.seated_row;
+            if (n.contains("shoulderpresses")) return R.drawable.shoulder_press;
+            if (n.contains("waterarobics")) return R.drawable.waterarobics;
+
+            return R.drawable.walking; // Default
         }
 
         @Override public int getItemCount() { return list.size(); }
