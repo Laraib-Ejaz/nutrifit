@@ -50,7 +50,7 @@ public class ChatBotActivity extends AppCompatActivity {
         currentUserEmail = userSession.getString("userEmail", "default_user");
 
         // 2. Gemini API Setup
-        GenerativeModel gm = new GenerativeModel("gemini-flash-latest", "AIzaSyCmrJ2wQAQcjjpTiA-mqgQCOMng3ff13bI");
+        GenerativeModel gm = new GenerativeModel("gemini-flash-latest", "api key");
         model = GenerativeModelFutures.from(gm);
 
         // 3. UI Initialization
