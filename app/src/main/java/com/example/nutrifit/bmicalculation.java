@@ -1,7 +1,7 @@
 package com.example.nutrifit;
 
 import android.content.Intent;
-import android.content.SharedPreferences; // Import SharedPreferences
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -9,6 +9,8 @@ import android.widget.EditText;
 import android.widget.RadioGroup;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+
+import java.util.Locale;
 
 public class bmicalculation extends AppCompatActivity {
 
@@ -52,23 +54,26 @@ public class bmicalculation extends AppCompatActivity {
             float bmiValue = weight / (heightM * heightM);
 
             String status = getBmiStatus(bmiValue);
-            String bmiFormatted = String.format("%.1f", bmiValue);
+            String bmiFormatted = String.format(Locale.getDefault(), "%.1f", bmiValue);
 
-            // --- NAYA CODE: SHARED PREFERENCES MEIN SAVE KARNA ---
-            // Is se data phone ki memory mein save ho jayega aur login ke baad naya hi load hoga
-            SharedPreferences sharedPref = getSharedPreferences("UserHealthData", MODE_PRIVATE);
-            SharedPreferences.Editor editor = sharedPref.edit();
+            // --- SESSION MANAGEMENT & DATA SAVING ---
+            // Yahan hum save kar rahe hain ke user ne BMI process complete kar liya hai
+            SharedPreferences userSession = getSharedPreferences("UserSession", MODE_PRIVATE);
+            SharedPreferences.Editor editor = userSession.edit();
+
+            editor.putBoolean("hasCompletedBMI", true); // Splash screen ab direct Dashboard bhejegi
             editor.putString("LAST_BMI", bmiFormatted);
             editor.putString("LAST_STATUS", status);
             editor.apply();
-            // ---------------------------------------------------
+            // -----------------------------------------
 
+            // Dashboard par data bhejte waqt Intent ka istemal
             Intent intent = new Intent(bmicalculation.this, dashboard.class);
             intent.putExtra("BMI_SCORE", bmiFormatted);
             intent.putExtra("STATUS", status);
 
             startActivity(intent);
-            finish();
+            finish(); // Activity finish karna zaroori hai taake user back karke yahan na aa sake
 
         } catch (NumberFormatException e) {
             Toast.makeText(this, "Please enter valid numbers", Toast.LENGTH_SHORT).show();

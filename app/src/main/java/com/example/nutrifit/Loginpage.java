@@ -2,8 +2,8 @@ package com.example.nutrifit;
 
 import android.annotation.SuppressLint;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -23,11 +23,10 @@ public class Loginpage extends AppCompatActivity {
 
         mAuth = FirebaseAuth.getInstance();
 
-        // IDs: editEmail, editPassword, btnLogin
         loginEmail = findViewById(R.id.editEmail);
         loginPassword = findViewById(R.id.editPassword);
         btnLogin = findViewById(R.id.btnLogin);
-        btnRegisterNow = findViewById(R.id.btnGoToRegister); // Agar register par wapis jana ho
+        btnRegisterNow = findViewById(R.id.btnGoToRegister);
 
         btnLogin.setOnClickListener(v -> {
             String email = loginEmail.getText().toString().trim();
@@ -41,9 +40,28 @@ public class Loginpage extends AppCompatActivity {
             // Firebase Login
             mAuth.signInWithEmailAndPassword(email, pass).addOnCompleteListener(task -> {
                 if (task.isSuccessful()) {
+
+                    // --- SESSION SAVING ---
+                    SharedPreferences userSession = getSharedPreferences("UserSession", MODE_PRIVATE);
+                    SharedPreferences.Editor editor = userSession.edit();
+                    editor.putBoolean("isLoggedIn", true);
+                    editor.putString("userEmail", email);
+
+                    // Note: Yahan hum hasCompletedBMI ko true nahi kar rahe,
+                    // kyunke agar naya user hai toh use BMI page par jana chahiye.
+                    // Splash screen khud hi check kar legi ke purane user ka data hai ya nahi.
+                    editor.apply();
+
                     Toast.makeText(this, "Login Successful!", Toast.LENGTH_SHORT).show();
-                    // Login ke baad BMI Calculator par bhejna
-                    startActivity(new Intent(this, bmicalculation.class));
+
+                    // Yahan se Splash screen wali logic repeat hogi
+                    boolean hasCompletedBMI = userSession.getBoolean("hasCompletedBMI", false);
+                    if (hasCompletedBMI) {
+                        startActivity(new Intent(this, dashboard.class));
+                    } else {
+                        startActivity(new Intent(this, bmicalculation.class));
+                    }
+
                     finish();
                 } else {
                     Toast.makeText(this, "Login Failed! Email/Password check karein", Toast.LENGTH_SHORT).show();

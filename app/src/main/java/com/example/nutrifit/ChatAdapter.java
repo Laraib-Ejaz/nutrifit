@@ -10,7 +10,8 @@ import androidx.recyclerview.widget.RecyclerView;
 import java.util.List;
 
 public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MyViewHolder> {
-    List<Message> messageList;
+
+    private List<Message> messageList;
 
     public ChatAdapter(List<Message> messageList) {
         this.messageList = messageList;
@@ -26,6 +27,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MyViewHolder> 
     @Override
     public void onBindViewHolder(@NonNull MyViewHolder holder, int position) {
         Message message = messageList.get(position);
+
         if (message.getSentBy().equals(Message.SENT_BY_ME)) {
             holder.leftChatView.setVisibility(View.GONE);
             holder.rightChatView.setVisibility(View.VISIBLE);
@@ -33,12 +35,22 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MyViewHolder> 
         } else {
             holder.rightChatView.setVisibility(View.GONE);
             holder.leftChatView.setVisibility(View.VISIBLE);
-            holder.leftChatText.setText(message.getMessage());
+
+            // AI formatting saaf karne ke liye
+            String cleanMsg = message.getMessage()
+                    .replace("**", "")
+                    .replace("###", "")
+                    .replace("*", "•")
+                    .trim();
+
+            holder.leftChatText.setText(cleanMsg);
         }
     }
 
     @Override
-    public int getItemCount() { return messageList.size(); }
+    public int getItemCount() {
+        return messageList.size();
+    }
 
     public static class MyViewHolder extends RecyclerView.ViewHolder {
         LinearLayout leftChatView, rightChatView;

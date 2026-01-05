@@ -51,7 +51,7 @@ public class DietPlansActivity extends AppCompatActivity {
         dietTitle.setText("Daily Diet Plan (" + status + ")");
 
         // Gemini Setup
-        GenerativeModel gm = new GenerativeModel("gemini-flash-latest", "your api key");
+        GenerativeModel gm = new GenerativeModel("gemini-flash-latest", "AIzaSyCmrJ2wQAQcjjpTiA-mqgQCOMng3ff13bI");
         model = GenerativeModelFutures.from(gm);
 
         generateAIDietPlan(bmi, status);
